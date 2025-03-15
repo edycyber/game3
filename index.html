@@ -340,7 +340,7 @@
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     console.log("Preloader hidden, game should be visible");
-                    spawnEnemies(); // Spawn enemies only after all assets are loaded
+                    spawnEnemies();
                     animate();
                 }, 500);
             }
@@ -655,6 +655,7 @@
                 this.attackDamage = this.type === 'grunt' ? 8 : 12;
                 this.lastShot = 0;
                 this.shootCooldown = this.type === 'grunt' ? 2000 : 1500;
+                this.heightOffset = 1.8; // Offset to align feet with terrain (adjust based on model height)
                 this.setupModel();
                 this.setupMinimap();
                 this.spawn();
@@ -667,7 +668,7 @@
                     return;
                 }
                 this.mesh = model.clone();
-                this.mesh.scale.set(2, 2, 2); // Adjust scale as needed
+                this.mesh.scale.set(2, 2, 2); // 2x scale
                 this.mesh.position.copy(this.position);
                 this.mesh.traverse(function(child) {
                     if (child.isMesh) {
@@ -692,8 +693,9 @@
                     this.position.z = (Math.random() - 0.5) * 100;
                     distance = this.position.distanceTo(new THREE.Vector3(0, 0, 0));
                 } while (distance < 20 || distance > 80);
-                this.position.y = getHeightAtPosition(this.position.x, this.position.z);
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.heightOffset;
                 if (this.mesh) this.mesh.position.copy(this.position);
+                console.log(`Enemy (${this.type}) spawned at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
             }
 
             update() {
@@ -706,7 +708,7 @@
                 const distance = this.position.distanceTo(camera.position);
                 
                 this.position.add(direction.multiplyScalar(this.speed));
-                this.position.y = getHeightAtPosition(this.position.x, this.position.z);
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.heightOffset;
                 this.mesh.position.copy(this.position);
 
                 // Face the player
@@ -1078,7 +1080,6 @@
         }
 
         camera.position.set(0, player.height, 0);
-        // Note: spawnEnemies() and animate() are called after all assets load in updateLoadingProgress
         console.log("Game initialization started");
     </script>
 </body>

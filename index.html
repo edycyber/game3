@@ -331,38 +331,6 @@
             { name: "Plasma Pistol", maxAmmo: 50, fireRate: 0.2, damage: 15, auto: false, bulletSpeed: 1.5 }
         ];
 
-        // Preload enemy models
-        let soldierModel, germanSoldierModel;
-        const gltfLoader = new THREE.GLTFLoader();
-
-        gltfLoader.load('./soldier.glb', function(gltf) {
-            soldierModel = gltf.scene;
-            soldierModel.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            updateLoadingProgress();
-            console.log("soldier.glb preloaded");
-        }, undefined, function(error) {
-            console.error("Error loading soldier.glb:", error);
-        });
-
-        gltfLoader.load('./germansoldier.glb', function(gltf) {
-            germanSoldierModel = gltf.scene;
-            germanSoldierModel.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            updateLoadingProgress();
-            console.log("germansoldier.glb preloaded");
-        }, undefined, function(error) {
-            console.error("Error loading germansoldier.glb:", error);
-        });
-
         function updateLoadingProgress() {
             assetsLoaded++;
             const progress = assetsLoaded / totalAssets * 100;
@@ -372,6 +340,8 @@
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     console.log("Preloader hidden, game should be visible");
+                    spawnEnemies(); // Spawn enemies only after all assets are loaded
+                    animate();
                 }, 500);
             }
         }
@@ -480,6 +450,7 @@
         console.log("Terrain added");
 
         // Load camp
+        const gltfLoader = new THREE.GLTFLoader();
         gltfLoader.load('./textured_mesh.glb', function(gltf) {
             const camp = gltf.scene;
             camp.position.set(0, 0, 0);
@@ -495,6 +466,37 @@
             console.log("Camp (textured_mesh.glb) loaded with scale 10x");
         }, undefined, function(error) {
             console.error("Error loading textured_mesh.glb:", error);
+        });
+
+        // Preload enemy models
+        let soldierModel, germanSoldierModel;
+
+        gltfLoader.load('./soldier.glb', function(gltf) {
+            soldierModel = gltf.scene;
+            soldierModel.traverse(function(child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            updateLoadingProgress();
+            console.log("soldier.glb preloaded");
+        }, undefined, function(error) {
+            console.error("Error loading soldier.glb:", error);
+        });
+
+        gltfLoader.load('./germansoldier.glb', function(gltf) {
+            germanSoldierModel = gltf.scene;
+            germanSoldierModel.traverse(function(child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            updateLoadingProgress();
+            console.log("germansoldier.glb preloaded");
+        }, undefined, function(error) {
+            console.error("Error loading germansoldier.glb:", error);
         });
 
         const player = {
@@ -674,6 +676,7 @@
                     }
                 });
                 scene.add(this.mesh);
+                console.log(`Enemy (${this.type}) model added to scene at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
             }
 
             setupMinimap() {
@@ -752,6 +755,7 @@
                 this.minimapElement.remove();
                 const index = enemies.indexOf(this);
                 if (index !== -1) enemies.splice(index, 1);
+                console.log(`Enemy (${this.type}) removed`);
             }
         }
 
@@ -940,11 +944,16 @@
         }
 
         function spawnEnemies() {
-            if (!gameActive) return;
-            for (let i = 0; i < totalEnemiesToSpawn; i++) {
-                enemies.push(new Enemy());
+            if (!gameActive || !soldierModel || !germanSoldierModel) {
+                console.error("Cannot spawn enemies: Models not loaded yet");
+                return;
             }
-            console.log("Enemies spawned");
+            for (let i = 0; i < totalEnemiesToSpawn; i++) {
+                const enemy = new Enemy();
+                enemies.push(enemy);
+                console.log(`Spawned enemy ${i + 1}/${totalEnemiesToSpawn}`);
+            }
+            console.log("All enemies spawned");
         }
 
         function checkWinCondition() {
@@ -1069,9 +1078,8 @@
         }
 
         camera.position.set(0, player.height, 0);
-        spawnEnemies();
-        animate();
-        console.log("Game started");
+        // Note: spawnEnemies() and animate() are called after all assets load in updateLoadingProgress
+        console.log("Game initialization started");
     </script>
 </body>
 </html>

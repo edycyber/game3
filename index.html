@@ -324,7 +324,7 @@
         let currentWeapon = 0;
         let backgroundMusic;
         let musicStarted = false;
-        const totalEnemiesToSpawn = 10;
+        const totalEnemiesToSpawn = 5; // Reduced from 10 to 5
 
         const weapons = [
             { name: "Assault Rifle", maxAmmo: 30, fireRate: 0.1, damage: 10, auto: true, bulletSpeed: 2 },
@@ -453,8 +453,8 @@
         const gltfLoader = new THREE.GLTFLoader();
         gltfLoader.load('./textured_mesh.glb', function(gltf) {
             const camp = gltf.scene;
-            camp.position.set(0, 0, 0);
-            camp.scale.set(10, 10, 10);
+            camp.position.set(0, 5, 0);
+            camp.scale.set(15, 15, 15);
             camp.traverse(function(child) {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -655,7 +655,7 @@
                 this.attackDamage = this.type === 'grunt' ? 8 : 12;
                 this.lastShot = 0;
                 this.shootCooldown = this.type === 'grunt' ? 2000 : 1500;
-                this.heightOffset = 1.8; // Offset to align feet with terrain (adjust based on model height)
+                this.heightOffset = 1.8; // Offset to align feet with terrain
                 this.setupModel();
                 this.setupMinimap();
                 this.spawn();

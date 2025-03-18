@@ -327,7 +327,7 @@
     <script>
         // Game variables
         let assetsLoaded = 0;
-        const totalAssets = 5; // HDR, terrain texture, terrain, camp (GLB), obstacles
+        const totalAssets = 7; // HDR, terrain texture, terrain, camp, obstacles, heli.png, plane.png
         let kills = 0;
         let health = 100;
         let shield = 100;
@@ -342,7 +342,8 @@
         let currentWeapon = 0;
         let backgroundMusic;
         let musicStarted = false;
-        const totalEnemiesToSpawn = 10;
+        const totalGroundEnemiesToSpawn = 7; // Reduced to make room for airborne
+        const totalAirborneEnemiesToSpawn = 3; // New airborne enemies
 
         const weapons = [
             { name: "Assault Rifle", maxAmmo: 30, fireRate: 0.1, damage: 10, auto: true, bulletSpeed: 2 },
@@ -358,6 +359,8 @@
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     console.log("Preloader hidden, game should be visible");
+                    spawnEnemies();
+                    animate();
                 }, 500);
             }
         }
@@ -465,12 +468,12 @@
         updateLoadingProgress();
         console.log("Terrain added");
 
-        // Load textured_mesh.glb as the camp
+        // Load camp
         const gltfLoader = new THREE.GLTFLoader();
         gltfLoader.load('./textured_mesh.glb', function(gltf) {
             const camp = gltf.scene;
-            camp.position.set(0, 2, 0); // Adjust position as needed
-            camp.scale.set(15, 15, 15); // Adjust scale if necessary
+            camp.position.set(0, 0, 0);
+            camp.scale.set(15, 15, 15);
             camp.traverse(function(child) {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -479,9 +482,27 @@
             });
             scene.add(camp);
             updateLoadingProgress();
-            console.log("Camp (textured_mesh.glb) loaded");
+            console.log("Camp (textured_mesh.glb) loaded with scale 15x");
         }, undefined, function(error) {
             console.error("Error loading textured_mesh.glb:", error);
+        });
+
+        // Preload airborne enemy textures
+        let heliTexture, planeTexture;
+        textureLoader.load('./heli.png', function(texture) {
+            heliTexture = texture;
+            updateLoadingProgress();
+            console.log("heli.png preloaded");
+        }, undefined, function(error) {
+            console.error("Error loading heli.png:", error);
+        });
+
+        textureLoader.load('./plane.png', function(texture) {
+            planeTexture = texture;
+            updateLoadingProgress();
+            console.log("plane.png preloaded");
+        }, undefined, function(error) {
+            console.error("Error loading plane.png:", error);
         });
 
         const player = {
@@ -607,7 +628,7 @@
                     for (let i = enemies.length - 1; i >= 0; i--) {
                         const enemy = enemies[i];
                         const distance = this.position.distanceTo(enemy.position);
-                        if (distance < 1) {
+                        if (distance < (enemy.isAirborne ? 2 : 1)) { // Larger hitbox for airborne
                             enemy.takeDamage(this.damage);
                             this.remove();
                             break;
@@ -628,7 +649,7 @@
             }
         }
 
-        class Enemy {
+        class GroundEnemy {
             constructor() {
                 this.position = new THREE.Vector3();
                 this.health = 100;
@@ -641,14 +662,14 @@
                 this.attackDamage = this.type === 'grunt' ? 8 : 12;
                 this.lastShot = 0;
                 this.shootCooldown = this.type === 'grunt' ? 2000 : 1500;
+                this.isAirborne = false;
                 this.setupElements();
                 this.spawn();
             }
 
             setupElements() {
                 this.element.className = 'enemy';
-                this.element.style.backgroundImage = this.type === 'grunt' ? 
-                    'url(soldier.png)' : 'url(soldier.png)';
+                this.element.style.backgroundImage = 'url(soldier.png)';
                 document.getElementById('enemy-container').appendChild(this.element);
                 
                 this.minimapElement.className = 'minimap-enemy';
@@ -675,11 +696,9 @@
                 
                 const distance = this.position.distanceTo(camera.position);
                 
-                // Always move towards player, regardless of attack range
                 this.position.add(direction.multiplyScalar(this.speed));
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + 1.5;
 
-                // Shoot if within range
                 if (distance < this.attackRange && gameActive) {
                     this.shoot(direction);
                 }
@@ -742,6 +761,116 @@
                 this.minimapElement.remove();
                 const index = enemies.indexOf(this);
                 if (index !== -1) enemies.splice(index, 1);
+            }
+        }
+
+        class AirborneEnemy {
+            constructor() {
+                this.position = new THREE.Vector3();
+                this.health = 150; // Stronger than ground enemies
+                this.minimapElement = document.createElement('div');
+                this.active = true;
+                this.type = Math.random() < 0.5 ? 'helicopter' : 'plane';
+                this.speed = this.type === 'helicopter' ? 0.05 : 0.07;
+                this.attackRange = 25;
+                this.attackDamage = 15;
+                this.lastShot = 0;
+                this.shootCooldown = 1500;
+                this.isAirborne = true;
+                this.flightHeight = 10; // Fixed height above terrain
+                this.setupSprite();
+                this.setupMinimap();
+                this.spawn();
+            }
+
+            setupSprite() {
+                const texture = this.type === 'helicopter' ? heliTexture : planeTexture;
+                if (!texture) {
+                    console.error(`Texture for ${this.type} not loaded yet`);
+                    return;
+                }
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                this.sprite = new THREE.Sprite(material);
+                this.sprite.scale.set(5, 5, 1); // Adjust size as needed
+                this.sprite.position.copy(this.position);
+                scene.add(this.sprite);
+                console.log(`Airborne enemy (${this.type}) sprite added at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
+            }
+
+            setupMinimap() {
+                this.minimapElement.className = 'minimap-enemy';
+                this.minimapElement.style.background = this.type === 'helicopter' ? '#ff9900' : '#00cc00'; // Orange for heli, green for plane
+                document.getElementById('minimap-content').appendChild(this.minimapElement);
+            }
+
+            spawn() {
+                let distance;
+                do {
+                    this.position.x = (Math.random() - 0.5) * 100;
+                    this.position.z = (Math.random() - 0.5) * 100;
+                    distance = this.position.distanceTo(new THREE.Vector3(0, 0, 0));
+                } while (distance < 20 || distance > 80);
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
+                if (this.sprite) this.sprite.position.copy(this.position);
+            }
+
+            update() {
+                if (!this.active || !this.sprite) return;
+
+                const direction = new THREE.Vector3()
+                    .subVectors(camera.position, this.position)
+                    .normalize();
+                
+                const distance = this.position.distanceTo(camera.position);
+                
+                this.position.add(direction.multiplyScalar(this.speed));
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
+
+                this.sprite.position.copy(this.position);
+                this.sprite.lookAt(camera.position); // Face the player
+
+                if (distance < this.attackRange && gameActive) {
+                    this.shoot(direction);
+                }
+                
+                this.updateMinimap();
+            }
+
+            shoot(direction) {
+                const now = performance.now();
+                if (now - this.lastShot < this.shootCooldown) return;
+                this.lastShot = now;
+
+                const bullet = new Bullet(this.position, direction, true);
+                enemyBullets.push(bullet);
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.remove();
+                    kills++;
+                    document.getElementById('kill-counter').textContent = `Enemies Eliminated: ${kills}`;
+                    checkWinCondition();
+                }
+            }
+
+            updateMinimap() {
+                const minimapSize = 200;
+                const worldSize = 200;
+                const relX = (this.position.x - camera.position.x) / worldSize * minimapSize;
+                const relZ = (this.position.z - camera.position.z) / worldSize * minimapSize;
+                this.minimapElement.style.left = (100 + relX) + 'px';
+                this.minimapElement.style.top = (100 + relZ) + 'px';
+            }
+
+            remove() {
+                this.active = false;
+                if (this.sprite) scene.remove(this.sprite);
+                this.minimapElement.remove();
+                const index = enemies.indexOf(this);
+                if (index !== -1) enemies.splice(index, 1);
+                console.log(`Airborne enemy (${this.type}) removed`);
             }
         }
 
@@ -834,8 +963,7 @@
             currentAmmo = weapons[currentWeapon].maxAmmo;
             document.getElementById('weapon-switch').textContent = weapons[currentWeapon].name;
             document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
-            document.getElementById('weapon').style.backgroundImage = 
-                `url(gun.png)`;
+            document.getElementById('weapon').style.backgroundImage = `url(gun.png)`;
         }
 
         function updatePlayerMovement(delta) {
@@ -930,15 +1058,24 @@
         }
 
         function spawnEnemies() {
-            if (!gameActive) return;
-            for (let i = 0; i < totalEnemiesToSpawn; i++) {
-                enemies.push(new Enemy());
+            if (!gameActive || !heliTexture || !planeTexture) {
+                console.error("Cannot spawn enemies: Assets not fully loaded yet");
+                return;
             }
-            console.log("Enemies spawned");
+            enemies = []; // Clear existing enemies
+            for (let i = 0; i < totalGroundEnemiesToSpawn; i++) {
+                enemies.push(new GroundEnemy());
+                console.log(`Spawned ground enemy ${i + 1}/${totalGroundEnemiesToSpawn}`);
+            }
+            for (let i = 0; i < totalAirborneEnemiesToSpawn; i++) {
+                enemies.push(new AirborneEnemy());
+                console.log(`Spawned airborne enemy ${i + 1}/${totalAirborneEnemiesToSpawn}`);
+            }
+            console.log("All enemies spawned");
         }
 
         function checkWinCondition() {
-            if (gameActive && kills >= totalEnemiesToSpawn && enemies.length === 0) {
+            if (gameActive && kills >= (totalGroundEnemiesToSpawn + totalAirborneEnemiesToSpawn) && enemies.length === 0) {
                 gameOver(true);
             }
         }
@@ -1060,9 +1197,7 @@
         }
 
         camera.position.set(0, player.height, 0);
-        spawnEnemies();
-        animate();
-        console.log("Game started");
+        console.log("Game initialization started");
     </script>
 </body>
 </html>

@@ -177,6 +177,14 @@
             padding: 5px 10px;
             border-radius: 5px;
         }
+        #enemy-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
         #bullet-container {
             position: absolute;
             top: 0;
@@ -184,6 +192,15 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+        }
+        .enemy {
+            position: absolute;
+            width: 100px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.2s ease;
         }
         .bullet {
             position: absolute;
@@ -285,6 +302,7 @@
         <div id="kill-counter">Enemies Eliminated: 0</div>
     </div>
     
+    <div id="enemy-container"></div>
     <div id="bullet-container"></div>
     
     <div id="fps-counter">FPS: --</div>
@@ -309,7 +327,7 @@
     <script>
         // Game variables
         let assetsLoaded = 0;
-        const totalAssets = 7; // HDR, terrain texture, terrain, camp, obstacles, soldier.glb, germansoldier.glb
+        const totalAssets = 5; // HDR, terrain texture, terrain, camp (GLB), obstacles
         let kills = 0;
         let health = 100;
         let shield = 100;
@@ -324,7 +342,7 @@
         let currentWeapon = 0;
         let backgroundMusic;
         let musicStarted = false;
-        const totalEnemiesToSpawn = 5; // Reduced from 10 to 5
+        const totalEnemiesToSpawn = 10;
 
         const weapons = [
             { name: "Assault Rifle", maxAmmo: 30, fireRate: 0.1, damage: 10, auto: true, bulletSpeed: 2 },
@@ -340,8 +358,6 @@
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     console.log("Preloader hidden, game should be visible");
-                    spawnEnemies();
-                    animate();
                 }, 500);
             }
         }
@@ -449,12 +465,12 @@
         updateLoadingProgress();
         console.log("Terrain added");
 
-        // Load camp
+        // Load textured_mesh.glb as the camp
         const gltfLoader = new THREE.GLTFLoader();
         gltfLoader.load('./textured_mesh.glb', function(gltf) {
             const camp = gltf.scene;
-            camp.position.set(0, 5, 0);
-            camp.scale.set(15, 15, 15);
+            camp.position.set(0, 2, 0); // Adjust position as needed
+            camp.scale.set(15, 15, 15); // Adjust scale if necessary
             camp.traverse(function(child) {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -463,40 +479,9 @@
             });
             scene.add(camp);
             updateLoadingProgress();
-            console.log("Camp (textured_mesh.glb) loaded with scale 10x");
+            console.log("Camp (textured_mesh.glb) loaded");
         }, undefined, function(error) {
             console.error("Error loading textured_mesh.glb:", error);
-        });
-
-        // Preload enemy models
-        let soldierModel, germanSoldierModel;
-
-        gltfLoader.load('./soldier.glb', function(gltf) {
-            soldierModel = gltf.scene;
-            soldierModel.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            updateLoadingProgress();
-            console.log("soldier.glb preloaded");
-        }, undefined, function(error) {
-            console.error("Error loading soldier.glb:", error);
-        });
-
-        gltfLoader.load('./germansoldier.glb', function(gltf) {
-            germanSoldierModel = gltf.scene;
-            germanSoldierModel.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            updateLoadingProgress();
-            console.log("germansoldier.glb preloaded");
-        }, undefined, function(error) {
-            console.error("Error loading germansoldier.glb:", error);
         });
 
         const player = {
@@ -647,6 +632,7 @@
             constructor() {
                 this.position = new THREE.Vector3();
                 this.health = 100;
+                this.element = document.createElement('div');
                 this.minimapElement = document.createElement('div');
                 this.active = true;
                 this.type = Math.random() < 0.7 ? 'grunt' : 'elite';
@@ -655,32 +641,16 @@
                 this.attackDamage = this.type === 'grunt' ? 8 : 12;
                 this.lastShot = 0;
                 this.shootCooldown = this.type === 'grunt' ? 2000 : 1500;
-                this.heightOffset = 1.8; // Offset to align feet with terrain
-                this.setupModel();
-                this.setupMinimap();
+                this.setupElements();
                 this.spawn();
             }
 
-            setupModel() {
-                const model = this.type === 'grunt' ? soldierModel : germanSoldierModel;
-                if (!model) {
-                    console.error(`Model for ${this.type} not loaded yet`);
-                    return;
-                }
-                this.mesh = model.clone();
-                this.mesh.scale.set(2, 2, 2); // 2x scale
-                this.mesh.position.copy(this.position);
-                this.mesh.traverse(function(child) {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-                scene.add(this.mesh);
-                console.log(`Enemy (${this.type}) model added to scene at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
-            }
-
-            setupMinimap() {
+            setupElements() {
+                this.element.className = 'enemy';
+                this.element.style.backgroundImage = this.type === 'grunt' ? 
+                    'url(soldier.png)' : 'url(soldier.png)';
+                document.getElementById('enemy-container').appendChild(this.element);
+                
                 this.minimapElement.className = 'minimap-enemy';
                 this.minimapElement.style.background = this.type === 'grunt' ? '#e74c3c' : '#9b59b6';
                 document.getElementById('minimap-content').appendChild(this.minimapElement);
@@ -693,13 +663,11 @@
                     this.position.z = (Math.random() - 0.5) * 100;
                     distance = this.position.distanceTo(new THREE.Vector3(0, 0, 0));
                 } while (distance < 20 || distance > 80);
-                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.heightOffset;
-                if (this.mesh) this.mesh.position.copy(this.position);
-                console.log(`Enemy (${this.type}) spawned at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + 1.5;
             }
 
             update() {
-                if (!this.active || !this.mesh) return;
+                if (!this.active) return;
 
                 const direction = new THREE.Vector3()
                     .subVectors(camera.position, this.position)
@@ -707,19 +675,16 @@
                 
                 const distance = this.position.distanceTo(camera.position);
                 
+                // Always move towards player, regardless of attack range
                 this.position.add(direction.multiplyScalar(this.speed));
-                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.heightOffset;
-                this.mesh.position.copy(this.position);
+                this.position.y = getHeightAtPosition(this.position.x, this.position.z) + 1.5;
 
-                // Face the player
-                this.mesh.lookAt(camera.position);
-                this.mesh.rotation.x = 0; // Keep upright
-                this.mesh.rotation.z = 0;
-
+                // Shoot if within range
                 if (distance < this.attackRange && gameActive) {
                     this.shoot(direction);
                 }
                 
+                this.updateDOM();
                 this.updateMinimap();
             }
 
@@ -751,13 +716,32 @@
                 this.minimapElement.style.top = (100 + relZ) + 'px';
             }
 
+            updateDOM() {
+                const dirVec = new THREE.Vector3().subVectors(this.position, camera.position);
+                const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const angle = camDir.angleTo(dirVec);
+                const distance = dirVec.length();
+
+                if (angle < Math.PI / 1.5 && distance < 50) {
+                    const tempVec = this.position.clone().project(camera);
+                    const x = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+                    const scale = Math.max(0.2, 1 - distance / 50);
+                    this.element.style.display = 'block';
+                    this.element.style.left = x + 'px';
+                    this.element.style.top = y + 'px';
+                    this.element.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                } else {
+                    this.element.style.display = 'none';
+                }
+            }
+
             remove() {
                 this.active = false;
-                if (this.mesh) scene.remove(this.mesh);
+                this.element.remove();
                 this.minimapElement.remove();
                 const index = enemies.indexOf(this);
                 if (index !== -1) enemies.splice(index, 1);
-                console.log(`Enemy (${this.type}) removed`);
             }
         }
 
@@ -851,7 +835,7 @@
             document.getElementById('weapon-switch').textContent = weapons[currentWeapon].name;
             document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
             document.getElementById('weapon').style.backgroundImage = 
-                `url(/api/placeholder/400/320)`;
+                `url(gun.png)`;
         }
 
         function updatePlayerMovement(delta) {
@@ -946,16 +930,11 @@
         }
 
         function spawnEnemies() {
-            if (!gameActive || !soldierModel || !germanSoldierModel) {
-                console.error("Cannot spawn enemies: Models not loaded yet");
-                return;
-            }
+            if (!gameActive) return;
             for (let i = 0; i < totalEnemiesToSpawn; i++) {
-                const enemy = new Enemy();
-                enemies.push(enemy);
-                console.log(`Spawned enemy ${i + 1}/${totalEnemiesToSpawn}`);
+                enemies.push(new Enemy());
             }
-            console.log("All enemies spawned");
+            console.log("Enemies spawned");
         }
 
         function checkWinCondition() {
@@ -1008,6 +987,7 @@
             bullets = [];
             enemyBullets = [];
 
+            document.getElementById('enemy-container').innerHTML = '';
             document.getElementById('bullet-container').innerHTML = '';
             document.getElementById('minimap-content').innerHTML = `
                 <div class="minimap-player"></div>
@@ -1080,7 +1060,9 @@
         }
 
         camera.position.set(0, player.height, 0);
-        console.log("Game initialization started");
+        spawnEnemies();
+        animate();
+        console.log("Game started");
     </script>
 </body>
 </html>

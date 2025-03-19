@@ -287,7 +287,7 @@
                 updateLoadingProgress();
             });
 
-        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 50, 50); // Reduced resolution
+        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 50, 50);
         const positions = terrainGeometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
             const x = positions[i];
@@ -345,8 +345,8 @@
             constructor(position, direction, isEnemy = false) {
                 this.position = position.clone();
                 this.direction = direction.clone().normalize();
-                this.speed = isEnemy ? 1 : 2;
-                this.damage = isEnemy ? 10 : 20;
+                this.speed = isEnemy ? 1.5 : 2; // Increased enemy bullet speed
+                this.damage = isEnemy ? 15 : 20; // Increased enemy damage
                 this.active = true;
                 this.distanceTraveled = 0;
                 this.maxDistance = 50;
@@ -407,10 +407,10 @@
                 this.position = new THREE.Vector3();
                 this.health = 100;
                 this.active = true;
-                this.speed = 0.05;
-                this.attackRange = 20;
+                this.speed = 0.1; // Increased speed for noticeable movement
+                this.attackRange = 25; // Increased range for more shooting
                 this.lastShot = 0;
-                this.shootCooldown = 1000;
+                this.shootCooldown = 500; // Reduced cooldown for frequent shooting
                 this.flightHeight = 10;
                 this.setupSprite();
                 this.setupMinimap();
@@ -450,6 +450,7 @@
                     .subVectors(camera.position, this.position)
                     .normalize();
                 
+                // Move toward player
                 this.position.add(direction.multiplyScalar(this.speed * delta));
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
 
@@ -677,6 +678,10 @@
             bullets.length = 0;
             enemyBullets.length = 0;
 
+            document.getElementById('minimap-content').innerHTML = `
+                <div class="minimap-player"></div>
+                <div class="minimap-direction"></div>
+            `;
             document.getElementById('health-fill').style.width = '100%';
             document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
             document.getElementById('kill-counter').textContent = `Kills: 0`;

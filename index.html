@@ -584,12 +584,13 @@
                 this.health = 100;
                 this.active = true;
                 this.type = Math.random() < 0.5 ? 'heli' : 'plane';
-                this.speed = this.type === 'heli' ? 0.3 : 0.4; // Increased speed to get closer
-                this.attackRange = 15; // Reduced range to prioritize proximity
+                this.speed = this.type === 'heli' ? 1.0 : 2.0; // Faster: heli ~30-40 mph, plane ~60-80 mph scaled
+                this.attackRange = 15;
                 this.attackDamage = 20;
                 this.lastShot = 0;
-                this.shootCooldown = 500; // Shoot every 0.5s
+                this.shootCooldown = 500; // 0.5s
                 this.flightHeight = 10;
+                this.drift = new THREE.Vector3(); // For realistic movement
                 this.setupSprite();
                 this.setupMinimap();
                 this.spawn();
@@ -633,9 +634,13 @@
                 const direction = new THREE.Vector3()
                     .subVectors(camera.position, this.position)
                     .normalize();
+
+                // Add slight random drift for realism
+                this.drift.x = Math.sin(performance.now() * 0.001) * 0.1;
+                this.drift.z = Math.cos(performance.now() * 0.001) * 0.1;
+                const moveVector = direction.clone().multiplyScalar(this.speed * delta).add(this.drift.clone().multiplyScalar(delta));
                 
-                // Move closer to player
-                this.position.add(direction.multiplyScalar(this.speed * delta));
+                this.position.add(moveVector);
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
 
                 this.sprite.position.copy(this.position);

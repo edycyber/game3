@@ -57,18 +57,6 @@
             height: 100%;
             pointer-events: none;
         }
-        #weapon {
-            position: fixed;
-            bottom: 0;
-            right: 50%;
-            transform: translateX(50%);
-            width: 40%;
-            height: 40%;
-            background-repeat: no-repeat;
-            background-position: bottom center;
-            background-size: contain;
-            transition: transform 0.1s ease;
-        }
         #crosshair {
             position: fixed;
             top: 50%;
@@ -85,8 +73,8 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 200px;
-            height: 200px;
+            width: 150px;
+            height: 150px;
             background: rgba(0,0,0,0.5);
             border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%;
@@ -99,8 +87,8 @@
         }
         .minimap-player {
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             background: #3498db;
             border-radius: 50%;
             top: 50%;
@@ -109,9 +97,10 @@
         }
         .minimap-enemy {
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
+            background: #ff9900;
         }
         .minimap-direction {
             position: absolute;
@@ -119,9 +108,9 @@
             height: 0;
             top: 50%;
             left: 50%;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 10px solid #3498db;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 8px solid #3498db;
             transform: translate(-50%, -50%);
         }
         #health-bar {
@@ -138,58 +127,37 @@
         #health-fill {
             width: 100%;
             height: 100%;
-            background: linear-gradient(to right, #e74c3c, #3498db);
-            transition: width 0.3s ease;
-        }
-        .shield-bar {
-            position: fixed;
-            bottom: 45px;
-            left: 20px;
-            width: 200px;
-            height: 10px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        .shield-fill {
-            width: 100%;
-            height: 100%;
-            background: #00ffff;
+            background: #e74c3c;
             transition: width 0.3s ease;
         }
         #ammo-counter {
             position: fixed;
-            bottom: 60px;
+            bottom: 50px;
             left: 20px;
             color: white;
-            font-size: 24px;
+            font-size: 20px;
             background: rgba(0,0,0,0.5);
             padding: 5px 10px;
             border-radius: 5px;
         }
-        .weapon-switch {
+        #kill-counter {
             position: fixed;
-            bottom: 90px;
-            left: 20px;
+            top: 20px;
+            right: 20px;
             color: white;
+            font-size: 20px;
             background: rgba(0,0,0,0.5);
             padding: 5px 10px;
             border-radius: 5px;
         }
-        #bullet-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .bullet {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
+        #fps-counter {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
         #game-over {
             position: fixed;
@@ -229,31 +197,11 @@
         #restart-button:hover {
             background: #2980b9;
         }
-        #kill-counter {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            color: white;
-            font-size: 24px;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        #fps-counter {
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
     </style>
 </head>
 <body>
     <div class="instructions">
-        WASD to move | Mouse to aim | Left Click to shoot | R to reload | 
-        Space to jump | Shift to sprint | 1-2 to switch weapons | Survive the air assault!
+        WASD to move | Mouse to aim | Left Click to shoot | R to reload | Space to jump | Shift to sprint | Survive the air assault!
     </div>
     <div id="preloader">
         <h2>Loading Enemy Scout Patrol Ambush...</h2>
@@ -267,7 +215,6 @@
     
     <div id="game-ui">
         <div id="crosshair">+</div>
-        <div id="weapon"></div>
         <div id="minimap">
             <div id="minimap-content">
                 <div class="minimap-player"></div>
@@ -277,15 +224,9 @@
         <div id="health-bar">
             <div id="health-fill"></div>
         </div>
-        <div class="shield-bar">
-            <div class="shield-fill"></div>
-        </div>
         <div id="ammo-counter">30 / 300</div>
-        <div class="weapon-switch">Assault Rifle</div>
-        <div id="kill-counter">Enemies Eliminated: 0</div>
+        <div id="kill-counter">Kills: 0</div>
     </div>
-    
-    <div id="bullet-container"></div>
     
     <div id="fps-counter">FPS: --</div>
     
@@ -297,105 +238,40 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
-
     <script>
         // Game variables
         let assetsLoaded = 0;
-        const totalAssets = 6; // HDR, terrain texture, terrain, camp, heli.png, plane.png
+        const totalAssets = 4; // HDR, terrain texture, terrain, heli.png
         let kills = 0;
         let health = 100;
-        let shield = 100;
         let currentAmmo = 30;
         let totalAmmo = 300;
         let reloading = false;
         let gameActive = true;
         let enemies = [];
-        let obstacles = [];
         let bullets = [];
         let enemyBullets = [];
-        let currentWeapon = 0;
-        let backgroundMusic;
-        let musicStarted = false;
-        const totalAirborneEnemiesToSpawn = 5;
-
-        const weapons = [
-            { name: "Assault Rifle", maxAmmo: 30, fireRate: 0.1, damage: 10, auto: true, bulletSpeed: 2 },
-            { name: "Plasma Pistol", maxAmmo: 50, fireRate: 0.2, damage: 15, auto: false, bulletSpeed: 1.5 }
-        ];
+        const maxEnemies = 10;
 
         function updateLoadingProgress() {
             assetsLoaded++;
             const progress = assetsLoaded / totalAssets * 100;
             document.querySelector('#loading-progress').style.width = progress + '%';
-            console.log(`Asset loaded: ${assetsLoaded}/${totalAssets}`);
             if (assetsLoaded >= totalAssets) {
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
-                    console.log("Preloader hidden, game starting");
                     spawnEnemies();
                     animate();
                 }, 500);
             }
         }
 
-        // Music functions
-        function initializeBackgroundMusic() {
-            try {
-                backgroundMusic = new Audio('./energetic.mp3');
-                backgroundMusic.volume = 0.5;
-                backgroundMusic.loop = false;
-                
-                backgroundMusic.addEventListener('ended', function() {
-                    this.currentTime = 0;
-                    this.play().catch(error => console.error('Error replaying music:', error));
-                });
-
-                return true;
-            } catch (error) {
-                console.error('Error initializing music:', error);
-                return false;
-            }
-        }
-
-        function startBackgroundMusic() {
-            if (!backgroundMusic) {
-                if (!initializeBackgroundMusic()) return;
-            }
-            if (!musicStarted) {
-                backgroundMusic.play()
-                    .then(() => {
-                        musicStarted = true;
-                        console.log('Music started playing');
-                    })
-                    .catch(error => console.error('Error playing music:', error));
-            }
-        }
-
-        function stopBackgroundMusic() {
-            if (backgroundMusic && musicStarted) {
-                backgroundMusic.pause();
-                backgroundMusic.currentTime = 0;
-                musicStarted = false;
-            }
-        }
-
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 0); // Player height
+        camera.position.set(0, 2, 0);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('world').appendChild(renderer.domElement);
-        console.log("Renderer initialized");
 
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
@@ -411,68 +287,42 @@
                 updateLoadingProgress();
             });
 
-        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 200, 200);
+        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 50, 50); // Reduced resolution
         const positions = terrainGeometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
             const x = positions[i];
             const y = positions[i + 1];
-            positions[i + 2] = (Math.sin(x * 0.03) * Math.cos(y * 0.03) * 2) + 
-                             (Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5);
+            positions[i + 2] = (Math.sin(x * 0.03) * Math.cos(y * 0.03) * 2);
         }
         terrainGeometry.computeVertexNormals();
 
         const textureLoader = new THREE.TextureLoader();
-        const terrainMaterial = new THREE.MeshPhongMaterial({
+        const terrainMaterial = new THREE.MeshBasicMaterial({
             map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg', updateLoadingProgress),
-            color: 0x777777,
-            shininess: 10,
-            specular: 0x222222
+            color: 0x777777
         });
 
         const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
         terrain.rotation.x = -Math.PI / 2;
-        terrain.receiveShadow = true;
-        terrain.castShadow = true;
         scene.add(terrain);
         updateLoadingProgress();
 
-        const gltfLoader = new THREE.GLTFLoader();
-        gltfLoader.load('./textured_mesh.glb', function(gltf) {
-            const camp = gltf.scene;
-            camp.position.set(0, 0, 0);
-            camp.scale.set(15, 15, 15);
-            camp.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            scene.add(camp);
-            updateLoadingProgress();
-        });
-
-        let heliTexture, planeTexture;
+        let heliTexture;
         textureLoader.load('./heli.png', function(texture) {
             heliTexture = texture;
-            updateLoadingProgress();
-        });
-        textureLoader.load('./plane.png', function(texture) {
-            planeTexture = texture;
             updateLoadingProgress();
         });
 
         const player = {
             height: 2,
             radius: 0.5,
-            speed: 0.15,
+            speed: 0.2,
             sprintMultiplier: 2,
-            turnSpeed: 0.002,
-            jumpForce: 0.2,
-            gravity: 0.01,
+            turnSpeed: 0.003,
+            jumpForce: 0.3,
+            gravity: 0.015,
             velocity: new THREE.Vector3(),
-            canJump: false,
-            shieldRechargeDelay: 3000,
-            lastDamageTime: 0
+            canJump: false
         };
 
         function getHeightAtPosition(x, z) {
@@ -480,7 +330,7 @@
             const localZ = z + 100;
             const u = localX / 200;
             const v = localZ / 200;
-            const cellsPerSide = 200;
+            const cellsPerSide = 50;
             const gridX = Math.floor(u * cellsPerSide);
             const gridZ = Math.floor(v * cellsPerSide);
             if (gridX < 0 || gridX >= cellsPerSide || gridZ < 0 || gridZ >= cellsPerSide) return 0;
@@ -488,52 +338,15 @@
             return positions[index] || 0;
         }
 
-        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(50, 100, -50);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 500;
-        directionalLight.shadow.camera.left = -100;
-        directionalLight.shadow.camera.right = 100;
-        directionalLight.shadow.camera.top = 100;
-        directionalLight.shadow.camera.bottom = -100;
-        scene.add(directionalLight);
-
-        function createObstacle(x, z, scale) {
-            const height = getHeightAtPosition(x, z);
-            const geometry = new THREE.BoxGeometry(scale, scale * 1.5, scale);
-            const material = new THREE.MeshPhongMaterial({ color: 0x888888 });
-            const obstacle = new THREE.Mesh(geometry, material);
-            obstacle.position.set(x, height + scale * 0.75, z);
-            obstacle.castShadow = true;
-            obstacle.receiveShadow = true;
-            scene.add(obstacle);
-            obstacles.push({
-                mesh: obstacle,
-                position: new THREE.Vector3(x, height, z),
-                radius: scale * 0.6
-            });
-            updateLoadingProgress();
-        }
-
-        for (let i = 0; i < 30; i++) {
-            const x = Math.random() * 180 - 90;
-            const z = Math.random() * 180 - 90;
-            const scale = Math.random() * 3 + 2;
-            createObstacle(x, z, scale);
-        }
 
         class Bullet {
             constructor(position, direction, isEnemy = false) {
                 this.position = position.clone();
                 this.direction = direction.clone().normalize();
-                this.speed = isEnemy ? 1 : weapons[currentWeapon].bulletSpeed;
-                this.damage = isEnemy ? 10 : weapons[currentWeapon].damage;
+                this.speed = isEnemy ? 1 : 2;
+                this.damage = isEnemy ? 10 : 20;
                 this.active = true;
                 this.distanceTraveled = 0;
                 this.maxDistance = 50;
@@ -541,35 +354,23 @@
 
                 this.mesh = new THREE.Mesh(
                     new THREE.SphereGeometry(0.1, 8, 8),
-                    new THREE.MeshBasicMaterial({ color: isEnemy ? 0xff00ff : (currentWeapon === 0 ? 0xff0000 : 0x00ffff) })
+                    new THREE.MeshBasicMaterial({ color: isEnemy ? 0xff00ff : 0xff0000 })
                 );
                 this.mesh.position.copy(this.position);
                 scene.add(this.mesh);
-
-                this.element = document.createElement('div');
-                this.element.className = 'bullet';
-                this.element.style.background = isEnemy ? '#ff00ff' : (currentWeapon === 0 ? '#ff0000' : '#00ffff');
-                document.getElementById('bullet-container').appendChild(this.element);
             }
 
-            update() {
+            update(delta) {
                 if (!this.active) return;
 
-                this.position.add(this.direction.clone().multiplyScalar(this.speed));
+                this.position.add(this.direction.clone().multiplyScalar(this.speed * delta));
                 this.mesh.position.copy(this.position);
-                this.distanceTraveled += this.speed;
+                this.distanceTraveled += this.speed * delta;
 
-                const screenPos = this.position.clone().project(camera);
-                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
-
-                if (screenPos.z > 1 || this.distanceTraveled > this.maxDistance) {
+                if (this.distanceTraveled > this.maxDistance) {
                     this.remove();
                     return;
                 }
-
-                this.element.style.left = x + 'px';
-                this.element.style.top = y + 'px';
 
                 if (this.isEnemy) {
                     const distance = this.position.distanceTo(camera.position);
@@ -581,7 +382,7 @@
                     for (let i = enemies.length - 1; i >= 0; i--) {
                         const enemy = enemies[i];
                         const distance = this.position.distanceTo(enemy.position);
-                        if (distance < 2) { // Larger hitbox for airborne enemies
+                        if (distance < 2) {
                             enemy.takeDamage(this.damage);
                             this.remove();
                             break;
@@ -595,7 +396,6 @@
                 scene.remove(this.mesh);
                 this.mesh.geometry.dispose();
                 this.mesh.material.dispose();
-                this.element.remove();
                 const array = this.isEnemy ? enemyBullets : bullets;
                 const index = array.indexOf(this);
                 if (index !== -1) array.splice(index, 1);
@@ -605,16 +405,12 @@
         class AirborneEnemy {
             constructor() {
                 this.position = new THREE.Vector3();
-                this.health = 150;
-                this.minimapElement = document.createElement('div');
+                this.health = 100;
                 this.active = true;
-                this.type = Math.random() < 0.5 ? 'helicopter' : 'plane';
-                this.speed = this.type === 'helicopter' ? 0.05 : 0.07;
-                this.attackRange = 25;
-                this.attackDamage = 15;
+                this.speed = 0.05;
+                this.attackRange = 20;
                 this.lastShot = 0;
-                this.shootCooldown = 1500;
-                this.isAirborne = true;
+                this.shootCooldown = 1000;
                 this.flightHeight = 10;
                 this.setupSprite();
                 this.setupMinimap();
@@ -622,19 +418,17 @@
             }
 
             setupSprite() {
-                const texture = this.type === 'helicopter' ? heliTexture : planeTexture;
-                if (!texture) return;
-                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                if (!heliTexture) return;
+                const material = new THREE.SpriteMaterial({ map: heliTexture, transparent: true });
                 this.sprite = new THREE.Sprite(material);
-                this.sprite.scale.set(5, 5, 1);
+                this.sprite.scale.set(4, 4, 1);
                 this.sprite.position.copy(this.position);
                 scene.add(this.sprite);
-                console.log(`Spawned ${this.type} at ${this.position.x}, ${this.position.y}, ${this.position.z}`);
             }
 
             setupMinimap() {
+                this.minimapElement = document.createElement('div');
                 this.minimapElement.className = 'minimap-enemy';
-                this.minimapElement.style.background = this.type === 'helicopter' ? '#ff9900' : '#00cc00';
                 document.getElementById('minimap-content').appendChild(this.minimapElement);
             }
 
@@ -649,21 +443,20 @@
                 if (this.sprite) this.sprite.position.copy(this.position);
             }
 
-            update() {
+            update(delta) {
                 if (!this.active || !this.sprite) return;
 
                 const direction = new THREE.Vector3()
                     .subVectors(camera.position, this.position)
                     .normalize();
                 
-                const distance = this.position.distanceTo(camera.position);
-                
-                this.position.add(direction.multiplyScalar(this.speed));
+                this.position.add(direction.multiplyScalar(this.speed * delta));
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
 
                 this.sprite.position.copy(this.position);
                 this.sprite.lookAt(camera.position);
 
+                const distance = this.position.distanceTo(camera.position);
                 if (distance < this.attackRange && gameActive) {
                     this.shoot(direction);
                 }
@@ -684,18 +477,18 @@
                 if (this.health <= 0) {
                     this.remove();
                     kills++;
-                    document.getElementById('kill-counter').textContent = `Enemies Eliminated: ${kills}`;
+                    document.getElementById('kill-counter').textContent = `Kills: ${kills}`;
                     checkWinCondition();
                 }
             }
 
             updateMinimap() {
-                const minimapSize = 200;
+                const minimapSize = 150;
                 const worldSize = 200;
                 const relX = (this.position.x - camera.position.x) / worldSize * minimapSize;
                 const relZ = (this.position.z - camera.position.z) / worldSize * minimapSize;
-                this.minimapElement.style.left = (100 + relX) + 'px';
-                this.minimapElement.style.top = (100 + relZ) + 'px';
+                this.minimapElement.style.left = (75 + relX) + 'px';
+                this.minimapElement.style.top = (75 + relZ) + 'px';
             }
 
             remove() {
@@ -704,7 +497,6 @@
                 this.minimapElement.remove();
                 const index = enemies.indexOf(this);
                 if (index !== -1) enemies.splice(index, 1);
-                console.log(`Removed ${this.type}`);
             }
         }
 
@@ -715,11 +507,7 @@
 
         document.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
-            if (gameActive) {
-                if (e.key === 'r' && !reloading && currentAmmo < weapons[currentWeapon].maxAmmo && totalAmmo > 0) reload();
-                if (e.key === '1') switchWeapon(0);
-                if (e.key === '2') switchWeapon(1);
-            }
+            if (gameActive && e.key === 'r' && !reloading && currentAmmo < 30 && totalAmmo > 0) reload();
         });
 
         document.addEventListener('keyup', e => {
@@ -738,21 +526,18 @@
         });
 
         document.addEventListener('mousedown', e => {
-            if (!gameActive) return;
-            if (e.button === 0) {
-                mouseDown = true;
-                if (currentAmmo > 0 && !reloading) shoot();
-            }
+            if (!gameActive || e.button !== 0) return;
+            mouseDown = true;
+            if (currentAmmo > 0 && !reloading) shoot();
         });
 
         document.addEventListener('mouseup', e => {
             if (e.button === 0) mouseDown = false;
         });
 
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', e => {
             if (gameActive && e.target.tagName !== 'BUTTON') {
                 renderer.domElement.requestPointerLock();
-                startBackgroundMusic();
             }
         });
 
@@ -760,48 +545,32 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
         });
 
         function reload() {
-            if (reloading || currentAmmo === weapons[currentWeapon].maxAmmo || totalAmmo === 0) return;
+            if (reloading || currentAmmo === 30 || totalAmmo === 0) return;
             reloading = true;
             document.getElementById('ammo-counter').textContent = "Reloading...";
             setTimeout(() => {
-                const ammoNeeded = weapons[currentWeapon].maxAmmo - currentAmmo;
+                const ammoNeeded = 30 - currentAmmo;
                 const ammoToAdd = Math.min(ammoNeeded, totalAmmo);
                 currentAmmo += ammoToAdd;
                 totalAmmo -= ammoToAdd;
                 document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
                 reloading = false;
-            }, 2000);
+            }, 1500);
         }
 
         let lastShot = 0;
         function shoot() {
             const now = performance.now();
-            if (reloading || currentAmmo <= 0 || now - lastShot < weapons[currentWeapon].fireRate * 1000) return;
-
+            if (reloading || currentAmmo <= 0 || now - lastShot < 100) return;
             lastShot = now;
             currentAmmo--;
             document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
-
-            const weapon = document.getElementById('weapon');
-            weapon.style.transform = 'translateX(50%) translateY(-10px)';
-            setTimeout(() => weapon.style.transform = 'translateX(50%)', 50);
-
             const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const bullet = new Bullet(camera.position.clone(), direction);
             bullets.push(bullet);
-        }
-
-        function switchWeapon(index) {
-            if (index === currentWeapon || index < 0 || index >= weapons.length) return;
-            currentWeapon = index;
-            currentAmmo = weapons[currentWeapon].maxAmmo;
-            document.getElementById('weapon-switch').textContent = weapons[currentWeapon].name;
-            document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
-            document.getElementById('weapon').style.backgroundImage = `url(gun.png)`;
         }
 
         function updatePlayerMovement(delta) {
@@ -839,68 +608,31 @@
                 player.canJump = true;
             }
 
-            obstacles.forEach(obstacle => {
-                const dist = newPos.distanceTo(obstacle.position);
-                if (dist < player.radius + obstacle.radius) {
-                    const normal = newPos.clone().sub(obstacle.position).normalize();
-                    newPos.copy(camera.position);
-                    player.velocity.multiplyScalar(0);
-                }
-            });
-
             camera.position.copy(newPos);
         }
 
         function takeDamage(amount) {
             if (!gameActive) return;
-
-            const currentTime = performance.now();
-            player.lastDamageTime = currentTime;
-
-            if (shield > 0) {
-                shield -= amount;
-                if (shield < 0) {
-                    health += shield;
-                    shield = 0;
-                }
-            } else {
-                health -= amount;
-            }
-
+            health -= amount;
             if (health <= 0) {
                 health = 0;
                 gameOver(false);
             }
-
             document.getElementById('health-fill').style.width = health + '%';
-            document.getElementById('shield-fill').style.width = shield + '%';
-
-            setTimeout(() => {
-                if (performance.now() - player.lastDamageTime >= player.shieldRechargeDelay) {
-                    rechargeShield();
-                }
-            }, player.shieldRechargeDelay);
-        }
-
-        function rechargeShield() {
-            if (!gameActive || shield >= 100) return;
-            shield = Math.min(100, shield + 2);
-            document.getElementById('shield-fill').style.width = shield + '%';
-            if (shield < 100) setTimeout(rechargeShield, 100);
         }
 
         function spawnEnemies() {
-            if (!gameActive || !heliTexture || !planeTexture) return;
+            if (!gameActive || !heliTexture) return;
             enemies.forEach(enemy => enemy.remove());
             enemies.length = 0;
-            for (let i = 0; i < totalAirborneEnemiesToSpawn; i++) {
+            for (let i = 0; i < maxEnemies; i++) {
                 enemies.push(new AirborneEnemy());
             }
-            console.log(`Spawned ${enemies.length} airborne enemies`);
+            console.log(`Spawned ${enemies.length} enemies`);
         }
 
         function checkWinCondition() {
-            if (gameActive && kills >= totalAirborneEnemiesToSpawn && enemies.length === 0) {
+            if (gameActive && kills >= maxEnemies && enemies.length === 0) {
                 gameOver(true);
             }
         }
@@ -910,18 +642,17 @@
             const title = document.getElementById('game-over-title');
             const subtitle = document.getElementById('game-over-subtitle');
             if (playerWon) {
-                title.textContent = "Air Assault Repelled";
-                subtitle.textContent = "You survived the attack!";
+                title.textContent = "Victory";
+                subtitle.textContent = "You repelled the air assault!";
             } else {
                 title.textContent = "Mission Failed";
-                subtitle.textContent = "The air forces overwhelmed you!";
+                subtitle.textContent = "You were overwhelmed!";
             }
             document.getElementById('game-over').style.display = 'flex';
             bullets.forEach(bullet => bullet.remove());
             enemyBullets.forEach(bullet => bullet.remove());
             bullets.length = 0;
             enemyBullets.length = 0;
-            stopBackgroundMusic();
             document.exitPointerLock();
         }
 
@@ -929,8 +660,7 @@
             document.getElementById('game-over').style.display = 'none';
             gameActive = true;
             health = 100;
-            shield = 100;
-            currentAmmo = weapons[currentWeapon].maxAmmo;
+            currentAmmo = 30;
             totalAmmo = 300;
             kills = 0;
             reloading = false;
@@ -939,7 +669,6 @@
             yaw = 0;
             player.velocity.set(0, 0, 0);
             player.canJump = false;
-            player.lastDamageTime = 0;
 
             enemies.forEach(enemy => enemy.remove());
             enemies.length = 0;
@@ -948,42 +677,17 @@
             bullets.length = 0;
             enemyBullets.length = 0;
 
-            document.getElementById('bullet-container').innerHTML = '';
-            document.getElementById('minimap-content').innerHTML = `
-                <div class="minimap-player"></div>
-                <div class="minimap-direction"></div>
-            `;
-
             document.getElementById('health-fill').style.width = '100%';
-            document.getElementById('shield-fill').style.width = '100%';
             document.getElementById('ammo-counter').textContent = `${currentAmmo} / ${totalAmmo}`;
-            document.getElementById('kill-counter').textContent = `Enemies Eliminated: 0`;
-            document.getElementById('weapon-switch').textContent = weapons[currentWeapon].name;
+            document.getElementById('kill-counter').textContent = `Kills: 0`;
 
             camera.position.set(0, player.height, 0);
             camera.rotation.set(0, 0, 0);
 
             spawnEnemies();
-            startBackgroundMusic();
         }
 
         document.getElementById('restart-button').addEventListener('click', resetGame);
-
-        const composer = new THREE.EffectComposer(renderer);
-        const renderPass = new THREE.RenderPass(scene, camera);
-        composer.addPass(renderPass);
-
-        const bloomPass = new THREE.UnrealBloomPass(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.5, 0.4, 0.85
-        );
-        composer.addPass(bloomPass);
-
-        const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
-        const pixelRatio = renderer.getPixelRatio();
-        fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-        fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
-        composer.addPass(fxaaPass);
 
         let frameCount = 0;
         let lastTime = performance.now();
@@ -1010,12 +714,12 @@
             updateFPS();
             if (gameActive) {
                 updatePlayerMovement(delta);
-                enemies.forEach(enemy => enemy.update());
-                bullets.forEach(bullet => bullet.update());
-                enemyBullets.forEach(bullet => bullet.update());
-                if (mouseDown && currentAmmo > 0 && !reloading && weapons[currentWeapon].auto) shoot();
+                enemies.forEach(enemy => enemy.update(delta));
+                bullets.forEach(bullet => bullet.update(delta));
+                enemyBullets.forEach(bullet => bullet.update(delta));
+                if (mouseDown && currentAmmo > 0 && !reloading) shoot();
             }
-            composer.render();
+            renderer.render(scene, camera);
         }
     </script>
 </body>

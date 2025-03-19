@@ -297,11 +297,10 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
         // Game variables
         let assetsLoaded = 0;
-        const totalAssets = 7; // HDR, terrain texture, terrain, camp (GLB), heli.png, plane.png, obstacles
+        const totalAssets = 5; // HDR, terrain texture, terrain, heli.png, plane.png (removed textured_mesh.glb)
         let kills = 0;
         let health = 100;
         let shield = 100;
@@ -314,8 +313,10 @@
         let bullets = [];
         let enemyBullets = [];
         let currentWeapon = 0;
-        const totalEnemiesToSpawn = 8; // Reduced from 10 for performance
+        const totalEnemiesToSpawn = 8;
         let heliTexture, planeTexture;
+        let backgroundMusic;
+        let musicStarted = false;
 
         const weapons = [
             { name: "Assault Rifle", maxAmmo: 30, fireRate: 0.1, damage: 20, auto: true, bulletSpeed: 2 },
@@ -326,22 +327,61 @@
             assetsLoaded++;
             const progress = assetsLoaded / totalAssets * 100;
             document.querySelector('#loading-progress').style.width = progress + '%';
+            console.log(`Loaded ${assetsLoaded}/${totalAssets} assets`);
             if (assetsLoaded >= totalAssets) {
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     spawnEnemies();
+                    startBackgroundMusic();
                     animate();
                 }, 500);
             }
         }
 
+        // Music functions
+        function initializeBackgroundMusic() {
+            try {
+                // Using a free, public domain audio file as a placeholder
+                backgroundMusic = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+                backgroundMusic.volume = 0.5;
+                backgroundMusic.loop = true;
+                backgroundMusic.addEventListener('error', (e) => console.error('Music load error:', e));
+                return true;
+            } catch (error) {
+                console.error('Music init error:', error);
+                return false;
+            }
+        }
+
+        function startBackgroundMusic() {
+            if (!backgroundMusic && !initializeBackgroundMusic()) return;
+            if (!musicStarted) {
+                backgroundMusic.play()
+                    .then(() => {
+                        musicStarted = true;
+                        console.log('Music started');
+                    })
+                    .catch(error => console.error('Music play error:', error));
+            }
+        }
+
+        function stopBackgroundMusic() {
+            if (backgroundMusic && musicStarted) {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+                musicStarted = false;
+                console.log('Music stopped');
+            }
+        }
+
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500); // Reduced far plane
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('world').appendChild(renderer.domElement);
+        console.log('Renderer initialized');
 
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
@@ -350,7 +390,7 @@
             .setDataType(THREE.UnsignedByteType)
             .load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/sunset_in_the_chalk_quarry_1k.hdr', function(texture) {
                 const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-                scene.background = envMap; // Removed scene.environment for simplicity
+                scene.background = envMap;
                 texture.dispose();
                 pmremGenerator.dispose();
                 updateLoadingProgress();
@@ -358,7 +398,7 @@
                 console.error("HDR load error:", error);
             });
 
-        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 16, 16); // Reduced to 16x16
+        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 16, 16);
         const positions = terrainGeometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
             const x = positions[i];
@@ -383,23 +423,6 @@
         terrain.castShadow = true;
         scene.add(terrain);
         updateLoadingProgress();
-
-        const gltfLoader = new THREE.GLTFLoader();
-        gltfLoader.load('./textured_mesh.glb', function(gltf) {
-            const camp = gltf.scene;
-            camp.position.set(0, 2, 0);
-            camp.scale.set(15, 15, 15);
-            camp.traverse(function(child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            scene.add(camp);
-            updateLoadingProgress();
-        }, undefined, function(error) {
-            console.error("GLTF load error:", error);
-        });
 
         textureLoader.load('./heli.png', function(texture) {
             heliTexture = texture;
@@ -448,7 +471,7 @@
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(50, 100, -50);
         directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 1024; // Reduced from 2048
+        directionalLight.shadow.mapSize.width = 1024;
         directionalLight.shadow.mapSize.height = 1024;
         directionalLight.shadow.camera.near = 0.5;
         directionalLight.shadow.camera.far = 500;
@@ -475,7 +498,7 @@
             updateLoadingProgress();
         }
 
-        for (let i = 0; i < 15; i++) { // Reduced from 30
+        for (let i = 0; i < 15; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
             const scale = Math.random() * 3 + 2;
@@ -576,7 +599,7 @@
             setupSprite() {
                 const texture = this.type === 'heli' ? heliTexture : planeTexture;
                 if (!texture) {
-                    console.warn(`Texture for ${this.type} not loaded yet`);
+                    console.warn(`Texture for ${this.type} not loaded`);
                     return;
                 }
                 const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
@@ -706,6 +729,7 @@
         document.addEventListener('click', e => {
             if (gameActive && e.target.tagName !== 'BUTTON') {
                 renderer.domElement.requestPointerLock();
+                startBackgroundMusic();
             }
         });
 
@@ -848,7 +872,10 @@
         }
 
         function spawnEnemies() {
-            if (!gameActive || !heliTexture || !planeTexture) return;
+            if (!gameActive || !heliTexture || !planeTexture) {
+                console.warn('Waiting for textures to load before spawning enemies');
+                return;
+            }
             enemies.forEach(enemy => enemy.remove());
             enemies.length = 0;
             for (let i = 0; i < totalEnemiesToSpawn; i++) {
@@ -868,18 +895,20 @@
             const title = document.getElementById('game-over-title');
             const subtitle = document.getElementById('game-over-subtitle');
             if (playerWon) {
-                title.textContent = "Camp Defended";
-                subtitle.textContent = "Prepare for the next wave";
+                title.textContent = "Victory";
+                subtitle.textContent = "All enemies eliminated";
             } else {
-                title.textContent = "Camp Overrun";
-                subtitle.textContent = "";
+                title.textContent = "Defeat";
+                subtitle.textContent = "You were overrun";
             }
             document.getElementById('game-over').style.display = 'flex';
             bullets.forEach(bullet => bullet.remove());
             enemyBullets.forEach(bullet => bullet.remove());
             bullets.length = 0;
             enemyBullets.length = 0;
+            stopBackgroundMusic();
             document.exitPointerLock();
+            console.log('Game over');
         }
 
         function resetGame() {
@@ -921,6 +950,8 @@
             camera.rotation.set(0, 0, 0);
 
             spawnEnemies();
+            startBackgroundMusic();
+            console.log('Game reset');
         }
 
         document.getElementById('restart-button').addEventListener('click', resetGame);
@@ -955,10 +986,11 @@
                 enemyBullets.forEach(bullet => bullet.update(delta));
                 if (mouseDown && currentAmmo > 0 && !reloading && weapons[currentWeapon].auto) shoot();
             }
-            renderer.render(scene, camera); // Simplified to direct render
+            renderer.render(scene, camera);
         }
 
         camera.position.set(0, player.height, 0);
+        console.log('Game initializing...');
         animate();
     </script>
 </body>

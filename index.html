@@ -204,7 +204,7 @@
         WASD to move | Mouse to aim | Left Click to shoot | R to reload | Space to jump | Shift to sprint | Survive the air assault!
     </div>
     <div id="preloader">
-        <h2>Loading Enemy Scout Patrol Ambush...</h2>
+        <h2>Loading Game...</h2>
         <div id="loading-bar">
             <div id="loading-progress"></div>
         </div>
@@ -252,6 +252,7 @@
         let bullets = [];
         let enemyBullets = [];
         const maxEnemies = 10;
+        let backgroundMusic;
 
         function updateLoadingProgress() {
             assetsLoaded++;
@@ -261,9 +262,24 @@
                 setTimeout(() => {
                     document.querySelector('#preloader').style.display = 'none';
                     spawnEnemies();
+                    startBackgroundMusic();
                     animate();
                 }, 500);
             }
+        }
+
+        // Music functions
+        function startBackgroundMusic() {
+            if (!backgroundMusic) {
+                backgroundMusic = new Audio('./energetic.mp3'); // Replace with your music file
+                backgroundMusic.loop = true;
+                backgroundMusic.volume = 0.5;
+            }
+            backgroundMusic.play().catch(error => console.error('Music play error:', error));
+        }
+
+        function stopBackgroundMusic() {
+            if (backgroundMusic) backgroundMusic.pause();
         }
 
         const scene = new THREE.Scene();
@@ -280,14 +296,13 @@
             .setDataType(THREE.UnsignedByteType)
             .load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/sunset_in_the_chalk_quarry_1k.hdr', function(texture) {
                 const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-                scene.environment = envMap;
                 scene.background = envMap;
                 texture.dispose();
                 pmremGenerator.dispose();
                 updateLoadingProgress();
             });
 
-        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 50, 50);
+        const terrainGeometry = new THREE.PlaneBufferGeometry(200, 200, 32, 32); // Further reduced resolution
         const positions = terrainGeometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
             const x = positions[i];
@@ -330,7 +345,7 @@
             const localZ = z + 100;
             const u = localX / 200;
             const v = localZ / 200;
-            const cellsPerSide = 50;
+            const cellsPerSide = 32;
             const gridX = Math.floor(u * cellsPerSide);
             const gridZ = Math.floor(v * cellsPerSide);
             if (gridX < 0 || gridX >= cellsPerSide || gridZ < 0 || gridZ >= cellsPerSide) return 0;
@@ -345,8 +360,8 @@
             constructor(position, direction, isEnemy = false) {
                 this.position = position.clone();
                 this.direction = direction.clone().normalize();
-                this.speed = isEnemy ? 1.5 : 2; // Increased enemy bullet speed
-                this.damage = isEnemy ? 15 : 20; // Increased enemy damage
+                this.speed = isEnemy ? 1.5 : 2;
+                this.damage = isEnemy ? 15 : 20;
                 this.active = true;
                 this.distanceTraveled = 0;
                 this.maxDistance = 50;
@@ -407,10 +422,10 @@
                 this.position = new THREE.Vector3();
                 this.health = 100;
                 this.active = true;
-                this.speed = 0.1; // Increased speed for noticeable movement
-                this.attackRange = 25; // Increased range for more shooting
+                this.speed = 0.2; // Increased for visible movement
+                this.attackRange = 25;
                 this.lastShot = 0;
-                this.shootCooldown = 500; // Reduced cooldown for frequent shooting
+                this.shootCooldown = 500;
                 this.flightHeight = 10;
                 this.setupSprite();
                 this.setupMinimap();
@@ -446,11 +461,9 @@
             update(delta) {
                 if (!this.active || !this.sprite) return;
 
-                const direction = new THREE.Vector3()
-                    .subVectors(camera.position, this.position)
-                    .normalize();
+                const target = camera.position.clone();
+                const direction = target.sub(this.position).normalize();
                 
-                // Move toward player
                 this.position.add(direction.multiplyScalar(this.speed * delta));
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
 
@@ -654,6 +667,7 @@
             enemyBullets.forEach(bullet => bullet.remove());
             bullets.length = 0;
             enemyBullets.length = 0;
+            stopBackgroundMusic();
             document.exitPointerLock();
         }
 
@@ -690,6 +704,7 @@
             camera.rotation.set(0, 0, 0);
 
             spawnEnemies();
+            startBackgroundMusic();
         }
 
         document.getElementById('restart-button').addEventListener('click', resetGame);

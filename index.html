@@ -253,7 +253,7 @@
 <body>
     <div class="instructions">
         WASD to move | Mouse to aim | Left Click to shoot | R to reload | 
-        Space to jump | Shift to sprint | 1-2 to switch weapons | Defend the camp!
+        Space to jump | Shift to sprint | 1-2 to switch weapons | Survive the assault!
     </div>
     <div id="preloader">
         <h2>Loading Enemy Scout Patrol Ambush...</h2>
@@ -290,7 +290,7 @@
     <div id="fps-counter">FPS: --</div>
     
     <div id="game-over">
-        <h1 id="game-over-title">Camp Overrun</h1>
+        <h1 id="game-over-title">Defeat</h1>
         <h2 id="game-over-subtitle"></h2>
         <button id="restart-button">Restart Defense</button>
     </div>
@@ -300,7 +300,7 @@
     <script>
         // Game variables
         let assetsLoaded = 0;
-        const totalAssets = 5; // HDR, terrain texture, terrain, heli.png, plane.png (removed textured_mesh.glb)
+        const totalAssets = 5; // HDR, terrain texture, terrain, heli.png, plane.png
         let kills = 0;
         let health = 100;
         let shield = 100;
@@ -341,7 +341,6 @@
         // Music functions
         function initializeBackgroundMusic() {
             try {
-                // Using a free, public domain audio file as a placeholder
                 backgroundMusic = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
                 backgroundMusic.volume = 0.5;
                 backgroundMusic.loop = true;
@@ -509,8 +508,8 @@
             constructor(position, direction, isEnemy = false) {
                 this.position = position.clone();
                 this.direction = direction.clone().normalize();
-                this.speed = isEnemy ? 1.5 : weapons[currentWeapon].bulletSpeed;
-                this.damage = isEnemy ? 15 : weapons[currentWeapon].damage;
+                this.speed = isEnemy ? 2 : weapons[currentWeapon].bulletSpeed;
+                this.damage = isEnemy ? 20 : weapons[currentWeapon].damage;
                 this.active = true;
                 this.distanceTraveled = 0;
                 this.maxDistance = 50;
@@ -585,11 +584,11 @@
                 this.health = 100;
                 this.active = true;
                 this.type = Math.random() < 0.5 ? 'heli' : 'plane';
-                this.speed = this.type === 'heli' ? 0.1 : 0.15;
-                this.attackRange = 25;
-                this.attackDamage = 15;
+                this.speed = this.type === 'heli' ? 0.3 : 0.4; // Increased speed to get closer
+                this.attackRange = 15; // Reduced range to prioritize proximity
+                this.attackDamage = 20;
                 this.lastShot = 0;
-                this.shootCooldown = 1000;
+                this.shootCooldown = 500; // Shoot every 0.5s
                 this.flightHeight = 10;
                 this.setupSprite();
                 this.setupMinimap();
@@ -625,6 +624,7 @@
                 } while (distance < 20 || distance > 80);
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
                 if (this.sprite) this.sprite.position.copy(this.position);
+                console.log(`Spawned ${this.type} at ${this.position.x.toFixed(2)}, ${this.position.y.toFixed(2)}, ${this.position.z.toFixed(2)}`);
             }
 
             update(delta) {
@@ -634,6 +634,7 @@
                     .subVectors(camera.position, this.position)
                     .normalize();
                 
+                // Move closer to player
                 this.position.add(direction.multiplyScalar(this.speed * delta));
                 this.position.y = getHeightAtPosition(this.position.x, this.position.z) + this.flightHeight;
 
@@ -646,6 +647,7 @@
                 }
                 
                 this.updateMinimap();
+                // console.log(`${this.type} at ${this.position.x.toFixed(2)}, ${this.position.z.toFixed(2)}, distance: ${distance.toFixed(2)}`);
             }
 
             shoot(direction) {
@@ -654,6 +656,7 @@
                 this.lastShot = now;
                 const bullet = new Bullet(this.position.clone(), direction, true);
                 enemyBullets.push(bullet);
+                console.log(`${this.type} fired bullet toward player from distance ${this.position.distanceTo(camera.position).toFixed(2)}`);
             }
 
             takeDamage(amount) {
@@ -663,6 +666,7 @@
                     kills++;
                     document.getElementById('kill-counter').textContent = `Enemies Eliminated: ${kills}`;
                     checkWinCondition();
+                    console.log(`${this.type} killed`);
                 }
             }
 
@@ -856,12 +860,7 @@
 
             document.getElementById('health-fill').style.width = health + '%';
             document.getElementById('shield-fill').style.width = shield + '%';
-
-            setTimeout(() => {
-                if (performance.now() - player.lastDamageTime >= player.shieldRechargeDelay) {
-                    rechargeShield();
-                }
-            }, player.shieldRechargeDelay);
+            console.log(`Player took ${amount} damage. Health: ${health}, Shield: ${shield}`);
         }
 
         function rechargeShield() {
